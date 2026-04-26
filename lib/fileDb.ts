@@ -4,7 +4,8 @@ import { Member, Payment, Settings } from '@/types';
 
 // Use /tmp on Vercel, else local data directory
 const isVercel = process.env.VERCEL === '1';
-const DATA_DIR = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
+const BUNDLED_DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = isVercel ? '/tmp/data' : BUNDLED_DATA_DIR;
 
 const MEMBERS_FILE = path.join(DATA_DIR, 'members.json');
 const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
@@ -30,15 +31,29 @@ async function ensureDir() {
   }
 }
 
-export async function readJson<T>(filePath: string, defaultData: T): Promise<T> {
+async function getInitialData<T>(fileName: string, defaultData: T): Promise<T> {
+  if (!isVercel) return defaultData;
+
+  // On Vercel, try to read from the bundled data directory first
+  try {
+    const bundledPath = path.join(BUNDLED_DATA_DIR, fileName);
+    const data = await fs.readFile(bundledPath, 'utf-8');
+    return JSON.parse(data) as T;
+  } catch (error) {
+    return defaultData;
+  }
+}
+
+export async function readJson<T>(filePath: string, fileName: string, defaultData: T): Promise<T> {
   await ensureDir();
   try {
     const data = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(data) as T;
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      await writeJson(filePath, defaultData);
-      return defaultData;
+      const initialData = await getInitialData(fileName, defaultData);
+      await writeJson(filePath, initialData);
+      return initialData;
     }
     throw error;
   }
@@ -50,7 +65,7 @@ export async function writeJson(filePath: string, data: any): Promise<void> {
 }
 
 export async function getMembers(): Promise<Member[]> {
-  return readJson<Member[]>(MEMBERS_FILE, []);
+  return readJson<Member[]>(MEMBERS_FILE, 'members.json', []);
 }
 
 export async function saveMembers(members: Member[]): Promise<void> {
@@ -58,15 +73,15 @@ export async function saveMembers(members: Member[]): Promise<void> {
 }
 
 export async function getPayments(): Promise<Payment[]> {
-  return readJson<Payment[]>(PAYMENTS_FILE, []);
+  return readJson<Payment[]>(PAYMENTS_FILE, 'payments.json', []);
 }
 
-export async function savePayments(payments: Payment[]): Promise<void> {
+export async function savePayments(payments: Promise<Payment[]> | Payment[]): Promise<void> {
   await writeJson(PAYMENTS_FILE, payments);
 }
 
 export async function getSettings(): Promise<Settings> {
-  return readJson<Settings>(SETTINGS_FILE, DEFAULT_SETTINGS);
+  return readJson<Settings>(SETTINGS_FILE, 'settings.json', DEFAULT_SETTINGS);
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
