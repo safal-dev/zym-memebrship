@@ -1,0 +1,11 @@
+[
+  {
+    "id": "PAY001",
+    "memberId": "MB001",
+    "memberName": "safal poudel",
+    "amount": 2000,
+    "paymentDate": "2026-04-26T16:05:06.449Z",
+    "method": "cash",
+    "note": "remaining will give later"
+  }
+]
