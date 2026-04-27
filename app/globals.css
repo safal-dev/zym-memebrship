@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  
+  --color-onyx-background: #131316;
+  --color-onyx-surface: #1f1f22;
+  --color-onyx-surface-low: #1b1b1e;
+  --color-onyx-surface-high: #2a2a2d;
+  --color-onyx-surface-highest: #353438;
+  --color-onyx-primary: #bbc6e2;
+  --color-onyx-primary-container: #0f1a2e;
+  --color-onyx-on-primary: #263046;
+  --color-onyx-tertiary: #66dd8b;
+  --color-onyx-on-surface: #e4e1e5;
+  --color-onyx-on-surface-variant: #c4c6cc;
+  --color-onyx-outline: #44474c;
+}
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #131316;
+  --foreground: #e4e1e5;
 }
 
 body {
@@ -13,23 +31,19 @@ body {
   overscroll-behavior-y: none;
 }
 
-@layer base {
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
+/* Kinetic Sanctuary Utilities */
+.glassmorphism {
+  background: rgba(31, 31, 34, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
-/* Custom Utilities */
-.glass {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.ambient-shadow {
+  box-shadow: 0 12px 24px -4px rgba(60, 71, 93, 0.1);
 }
 
-.card-gradient {
-  background: linear-gradient(to bottom right, #ffffff, #f9fafb);
+.ghost-border {
+  border: 1px solid rgba(68, 71, 76, 0.15);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -38,27 +52,6 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Custom Scrollbar for Desktop */
-@media (min-width: 1024px) {
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 10px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-  }
 }
 
 /* Animations */
@@ -73,25 +66,44 @@ body {
 }
 
 .animate-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
 .animate-slide-up {
-  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: slideInUp 0.5s cubic-bezier(0.2, 0, 0, 1) forwards;
 }
 
-/* Fix for iOS momentum scrolling */
-.overflow-y-auto {
-  -webkit-overflow-scrolling: touch;
+/* Editorial Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-manrope);
+  letter-spacing: -0.02em;
 }
 
-/* Input & Button Active States */
+.stats-value {
+  font-family: var(--font-manrope);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+/* Custom Scrollbar */
+@media (min-width: 1024px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #353438;
+    border-radius: 10px;
+  }
+}
+
 button:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
-input:focus {
-  transform: scale(1.01);
-}
-.transition-all {
-  transition-duration: 200ms;
+
+.transition-onyx {
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
 }
