@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Settings } from '@/types';
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,7 +11,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function Sidebar() {
+interface SidebarProps {
+  settings: Settings;
+}
+
+export function Sidebar({ settings }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems = [
@@ -26,8 +31,10 @@ export default function Sidebar() {
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 z-40 border-r border-slate-800">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold">G</div>
-            <span className="text-xl font-bold tracking-tight">GymConnect</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold">
+              {settings.gymName?.[0] || 'G'}
+            </div>
+            <span className="text-xl font-bold tracking-tight">{settings.gymName || 'GymConnect'}</span>
           </div>
 
           <nav className="space-y-2">

@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react';
 import { Member } from '@/types';
-import { formatCurrency, getStatusColor } from '@/lib/membership';
+import { formatCurrency } from '@/lib/membership';
 import { 
   Search, 
   MoreVertical, 
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { exportToCSV } from '@/lib/export-utils';
+import { cn } from '@/lib/utils';
 
 interface MemberTableProps {
   members: Member[];
@@ -157,8 +158,4 @@ function getStatusBadgeStyle(status: string) {
     case 'expired': return 'bg-surface-variant text-on-surface-variant';
     default: return 'bg-error-container/40 text-on-error-container';
   }
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

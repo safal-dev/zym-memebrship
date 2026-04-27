@@ -1,12 +1,8 @@
-'use Intelligence'
+'use client'
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Settings } from '@/types';
 import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Settings as SettingsIcon,
   Bell
 } from 'lucide-react';
 
@@ -14,12 +10,9 @@ interface NavbarProps {
   settings: Settings;
 }
 
-export default function Navbar({ settings }: NavbarProps) {
+export function Navbar({ settings }: NavbarProps) {
   const pathname = usePathname();
 
-  // On mobile, this is the "GymConnect" top header
-  // On desktop, it stays as the top search/profile bar
-  
   return (
     <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-2xl border-b border-white/20 shadow-sm flex justify-between items-center px-5 h-16 transition-all">
       <div className="flex items-center gap-3">
