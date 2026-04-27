@@ -1,4 +1,4 @@
-import { Check, Shield, Info } from 'lucide-react';
+import { Check, Shield, Info, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const plans = [
@@ -37,6 +37,14 @@ const plans = [
 ];
 
 export default function BillingPage() {
+  const whatsappNumber = '9779748435017';
+  const email = 'info.safalpoudel@gmail.com';
+
+  const getWhatsAppLink = (planName: string) => {
+    const text = encodeURIComponent(`i want to upgrade to ${planName}.`);
+    return `https://wa.me/${whatsappNumber}?text=${text}`;
+  };
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-10">
       <div>
@@ -76,7 +84,7 @@ export default function BillingPage() {
           <div 
             key={p.name} 
             className={cn(
-              "p-6 rounded-3xl border transition-all duration-300",
+              "p-6 rounded-3xl border transition-all duration-300 flex flex-col",
               p.current 
                 ? "bg-white border-blue-600 shadow-lg ring-1 ring-blue-600/10" 
                 : "bg-white border-gray-100 hover:border-gray-200 shadow-sm"
@@ -95,7 +103,7 @@ export default function BillingPage() {
               </div>
             </div>
 
-            <div className="space-y-3 mb-8">
+            <div className="space-y-3 mb-8 flex-grow">
               {p.features.map((f) => (
                 <div key={f} className="flex items-center gap-2 text-sm font-medium text-gray-600">
                   <Check className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -109,21 +117,43 @@ export default function BillingPage() {
                 Current Plan
               </button>
             ) : (
-              <button className="w-full py-3 bg-gray-900 text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg shadow-gray-100">
+              <a 
+                href={getWhatsAppLink(p.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 bg-gray-900 text-white rounded-2xl font-bold text-sm hover:bg-gray-800 transition-all shadow-lg shadow-gray-100 flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
                 Upgrade Now
-              </button>
+              </a>
             )}
           </div>
         ))}
       </div>
 
-      <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 flex gap-4 items-start">
-        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+      <div className="bg-gray-50 p-8 rounded-[2rem] border border-gray-100 flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left">
+        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+          <Info className="w-8 h-8" />
+        </div>
         <div>
-          <p className="text-sm font-bold text-gray-900 mb-1 uppercase tracking-tight">Need a custom plan?</p>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed">
-            If you have more than 1,500 members or need custom features, please contact our support team at <span className="text-blue-600 font-bold underline">support@carewellfitness.com</span>
+          <h3 className="text-xl font-black text-gray-900 mb-2 tracking-tight uppercase">Need a Custom Plan?</h3>
+          <p className="text-sm text-gray-500 font-medium leading-relaxed mb-6">
+            If you have more than 1,500 members or need custom features for your gym, contact us directly for a personalized quote.
           </p>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Call / WhatsApp</p>
+              <a href={`https://wa.me/${whatsappNumber}`} className="text-blue-600 font-bold hover:underline">
+                +{whatsappNumber}
+              </a>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Email Support</p>
+              <a href={`mailto:${email}`} className="text-blue-600 font-bold hover:underline">
+                {email}
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
