@@ -311,15 +311,25 @@ export function MemberDetails({ member, payments, settings }: { member: Member, 
                   </button>
                   <button 
                     onClick={async () => {
-                      if (confirm('Delete this payment record?')) {
-                        await deletePayment(p.id);
+                      const password = window.prompt('Please enter Admin Password to delete this payment record:');
+                      if (password === null) return; // Cancelled
+                      
+                      if (!password) {
+                        return toast.error('Password is required');
+                      }
+
+                      try {
+                        await deletePayment(p.id, password);
                         toast.success('Payment deleted');
+                      } catch (error: any) {
+                        toast.error(error.message || 'Failed to delete payment');
                       }
                     }}
                     className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
+
                 </div>
 
               </div>

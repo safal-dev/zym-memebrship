@@ -36,4 +36,6 @@ export interface Settings {
     months: number;
     price: number;
   }[];
+  adminPassword?: string;
 }
+

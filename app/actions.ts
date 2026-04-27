@@ -173,6 +173,18 @@ export async function updateSettings(formData: FormData) {
   revalidatePath('/');
 }
 
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const settings = await getSettings();
+  if (settings.adminPassword !== currentPassword) {
+    throw new Error('Current password incorrect');
+  }
+
+  settings.adminPassword = newPassword;
+  await saveSettings(settings);
+  revalidatePath('/settings');
+}
+
+
 export async function deleteMember(memberId: string) {
   await supabase.from('members').delete().eq('id', memberId);
   revalidatePath('/members');
@@ -180,8 +192,14 @@ export async function deleteMember(memberId: string) {
   redirect('/members');
 }
 
-export async function deletePayment(paymentId: string) {
+export async function deletePayment(paymentId: string, password?: string) {
+  const settings = await getSettings();
+  if (password && settings.adminPassword !== password) {
+    throw new Error('Invalid admin password');
+  }
+
   const { data: payment, error: pError } = await supabase
+
     .from('payments')
     .select('*')
     .eq('id', paymentId)

@@ -125,6 +125,7 @@ export async function getSettings(): Promise<Settings> {
     gymLogo: data.gym_logo,
     currency: data.currency,
     defaultPlans: data.default_plans,
+    adminPassword: data.admin_password || 'admin123',
   };
 }
 
@@ -137,7 +138,9 @@ export async function saveSettings(settings: Settings): Promise<void> {
       gym_logo: settings.gymLogo,
       currency: settings.currency,
       default_plans: settings.defaultPlans,
+      admin_password: settings.adminPassword,
     });
+
 
   if (error) throw error;
 }
