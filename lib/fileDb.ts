@@ -1,83 +1,165 @@
-import fs from 'fs/promises';
-import path from 'path';
+import { supabase } from './supabase';
 import { Member, Payment, Settings } from '@/types';
-import { INITIAL_MEMBERS, INITIAL_PAYMENTS, INITIAL_SETTINGS } from './initial-data';
 
-// Use /tmp on Vercel, else local data directory
-const isVercel = process.env.VERCEL === '1';
-const DATA_DIR = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
-
-const MEMBERS_FILE = path.join(DATA_DIR, 'members.json');
-const PAYMENTS_FILE = path.join(DATA_DIR, 'payments.json');
-const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
-
-async function ensureDir() {
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-  } catch (err) {
-    // Ignore error if directory already exists
-  }
-}
-
-export async function readJson<T>(filePath: string, defaultData: T): Promise<T> {
-  await ensureDir();
-  try {
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data) as T;
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      await writeJson(filePath, defaultData);
-      return defaultData;
-    }
-    throw error;
-  }
-}
-
-export async function writeJson(filePath: string, data: any): Promise<void> {
-  await ensureDir();
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
+// Helper to map DB row to Member type
+const mapMember = (row: any): Member => ({
+  id: row.id,
+  fullName: row.full_name,
+  phone: row.phone,
+  address: row.address,
+  photo: row.photo,
+  joinDate: row.join_date,
+  membershipPlan: row.membership_plan,
+  membershipStart: row.membership_start,
+  membershipEnd: row.membership_end,
+  totalFee: parseFloat(row.total_fee),
+  paidAmount: parseFloat(row.paid_amount),
+  dueAmount: parseFloat(row.due_amount),
+  status: row.status,
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
 
 export async function getMembers(): Promise<Member[]> {
-  return readJson<Member[]>(MEMBERS_FILE, INITIAL_MEMBERS);
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching members:', error);
+    return [];
+  }
+  return data.map(mapMember);
 }
 
 export async function saveMembers(members: Member[]): Promise<void> {
-  await writeJson(MEMBERS_FILE, members);
+  // In Supabase, we usually upsert individual members, 
+  // but for compatibility with the existing array-based logic:
+  const rows = members.map(m => ({
+    id: m.id,
+    full_name: m.fullName,
+    phone: m.phone,
+    address: m.address,
+    photo: m.photo,
+    join_date: m.joinDate,
+    membership_plan: m.membershipPlan,
+    membership_start: m.membershipStart,
+    membership_end: m.membershipEnd,
+    total_fee: m.totalFee,
+    paid_amount: m.paidAmount,
+    due_amount: m.dueAmount,
+    status: m.status,
+    notes: m.notes,
+    updated_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase.from('members').upsert(rows);
+  if (error) throw error;
 }
 
 export async function getPayments(): Promise<Payment[]> {
-  return readJson<Payment[]>(PAYMENTS_FILE, INITIAL_PAYMENTS);
+  const { data, error } = await supabase
+    .from('payments')
+    .select('*')
+    .order('payment_date', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching payments:', error);
+    return [];
+  }
+  
+  return data.map(p => ({
+    id: p.id,
+    memberId: p.member_id,
+    memberName: p.member_name,
+    amount: parseFloat(p.amount),
+    paymentDate: p.payment_date,
+    method: p.method,
+    note: p.note,
+  }));
 }
 
-export async function savePayments(payments: Promise<Payment[]> | Payment[]): Promise<void> {
-  await writeJson(PAYMENTS_FILE, payments);
+export async function savePayments(payments: Payment[]): Promise<void> {
+  const rows = payments.map(p => ({
+    id: p.id,
+    member_id: p.memberId,
+    member_name: p.memberName,
+    amount: p.amount,
+    payment_date: p.paymentDate,
+    method: p.method,
+    note: p.note,
+  }));
+
+  const { error } = await supabase.from('payments').upsert(rows);
+  if (error) throw error;
 }
 
 export async function getSettings(): Promise<Settings> {
-  return readJson<Settings>(SETTINGS_FILE, INITIAL_SETTINGS);
+  const { data, error } = await supabase
+    .from('settings')
+    .select('*')
+    .eq('id', 1)
+    .single();
+
+  if (error) {
+    console.error('Error fetching settings:', error);
+    // Return defaults if not found
+    return {
+      gymName: 'FitZone Gym',
+      gymLogo: '',
+      currency: 'NPR',
+      defaultPlans: [],
+    };
+  }
+
+  return {
+    gymName: data.gym_name,
+    gymLogo: data.gym_logo,
+    currency: data.currency,
+    defaultPlans: data.default_plans,
+  };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-  await writeJson(SETTINGS_FILE, settings);
+  const { error } = await supabase
+    .from('settings')
+    .upsert({
+      id: 1,
+      gym_name: settings.gymName,
+      gym_logo: settings.gymLogo,
+      currency: settings.currency,
+      default_plans: settings.defaultPlans,
+    });
+
+  if (error) throw error;
 }
 
+// IDs are handled by the app for now to maintain MB001 format
 export async function generateMemberId(): Promise<string> {
   const members = await getMembers();
   if (members.length === 0) return 'MB001';
-  
   const ids = members.map(m => parseInt(m.id.replace('MB', ''))).filter(n => !isNaN(n));
   const maxId = ids.length > 0 ? Math.max(...ids) : 0;
-  
   return `MB${String(maxId + 1).padStart(3, '0')}`;
 }
 
 export async function generatePaymentId(): Promise<string> {
   const payments = await getPayments();
   if (payments.length === 0) return 'PAY001';
-  
   const ids = payments.map(p => parseInt(p.id.replace('PAY', ''))).filter(n => !isNaN(n));
   const maxId = ids.length > 0 ? Math.max(...ids) : 0;
-  
   return `PAY${String(maxId + 1).padStart(3, '0')}`;
+}
+
+// Special helpers for deletions since we were using array filtering
+export async function deleteMemberFromDb(id: string) {
+  const { error } = await supabase.from('members').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deletePaymentFromDb(id: string) {
+  const { error } = await supabase.from('payments').delete().eq('id', id);
+  if (error) throw error;
 }

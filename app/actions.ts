@@ -1,6 +1,16 @@
 'use server';
 
-import { getMembers, saveMembers, generateMemberId, getSettings, saveSettings, getPayments, savePayments, generatePaymentId } from '@/lib/fileDb';
+import { 
+  getMembers, 
+  saveMembers, 
+  generateMemberId, 
+  getSettings, 
+  saveSettings, 
+  getPayments, 
+  savePayments, 
+  generatePaymentId 
+} from '@/lib/fileDb';
+import { supabase } from '@/lib/supabase';
 import { calculateEndDate, calculateDue } from '@/lib/membership';
 import { Member, Payment } from '@/types';
 import { revalidatePath } from 'next/cache';
@@ -8,8 +18,6 @@ import { redirect } from 'next/navigation';
 
 export async function addMember(formData: FormData) {
   const settings = await getSettings();
-  const members = await getMembers();
-  
   const planName = formData.get('membershipPlan') as string;
   const startDate = formData.get('membershipStart') as string;
   const totalFee = parseFloat(formData.get('totalFee') as string);
@@ -18,40 +26,38 @@ export async function addMember(formData: FormData) {
   const endDate = calculateEndDate(planName, startDate, settings.defaultPlans);
   const dueAmount = calculateDue(totalFee, paidAmount);
   
-  const newMember: Member = {
-    id: await generateMemberId(),
-    fullName: formData.get('fullName') as string,
+  const id = await generateMemberId();
+  const fullName = formData.get('fullName') as string;
+
+  const newMember = {
+    id,
+    full_name: fullName,
     phone: formData.get('phone') as string,
     address: formData.get('address') as string,
-    photo: '',
-    joinDate: formData.get('joinDate') as string,
-    membershipPlan: planName,
-    membershipStart: startDate,
-    membershipEnd: endDate,
-    totalFee,
-    paidAmount,
-    dueAmount,
+    join_date: formData.get('joinDate') as string,
+    membership_plan: planName,
+    membership_start: startDate,
+    membership_end: endDate,
+    total_fee: totalFee,
+    paid_amount: paidAmount,
+    due_amount: dueAmount,
     status: 'active',
     notes: formData.get('notes') as string,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
 
-  members.push(newMember);
-  await saveMembers(members);
+  const { error } = await supabase.from('members').insert(newMember);
+  if (error) throw error;
 
   if (paidAmount > 0) {
-    const payments = await getPayments();
-    payments.push({
+    await supabase.from('payments').insert({
       id: await generatePaymentId(),
-      memberId: newMember.id,
-      memberName: newMember.fullName,
+      member_id: id,
+      member_name: fullName,
       amount: paidAmount,
-      paymentDate: newMember.joinDate,
-      method: 'cash', // Default or from form
+      payment_date: new Date().toISOString(),
+      method: 'cash',
       note: 'Initial payment',
     });
-    await savePayments(payments);
   }
 
   revalidatePath('/members');
@@ -60,28 +66,35 @@ export async function addMember(formData: FormData) {
 }
 
 export async function addPayment(memberId: string, amount: number, method: string, note: string) {
-  const members = await getMembers();
-  const memberIndex = members.findIndex(m => m.id === memberId);
-  if (memberIndex === -1) throw new Error('Member not found');
-  
-  const member = members[memberIndex];
-  member.paidAmount += amount;
-  member.dueAmount = Math.max(0, member.totalFee - member.paidAmount);
-  member.updatedAt = new Date().toISOString();
-  
-  await saveMembers(members);
+  const { data: member, error: mError } = await supabase
+    .from('members')
+    .select('*')
+    .eq('id', memberId)
+    .single();
 
-  const payments = await getPayments();
-  payments.push({
+  if (mError || !member) throw new Error('Member not found');
+
+  const newPaidAmount = parseFloat(member.paid_amount) + amount;
+  const newDueAmount = Math.max(0, parseFloat(member.total_fee) - newPaidAmount);
+
+  await supabase
+    .from('members')
+    .update({ 
+      paid_amount: newPaidAmount, 
+      due_amount: newDueAmount,
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', memberId);
+
+  await supabase.from('payments').insert({
     id: await generatePaymentId(),
-    memberId: member.id,
-    memberName: member.fullName,
-    amount,
-    paymentDate: new Date().toISOString(),
+    member_id: memberId,
+    member_name: member.full_name,
+    amount: amount,
+    payment_date: new Date().toISOString(),
     method,
     note,
   });
-  await savePayments(payments);
 
   revalidatePath('/members');
   revalidatePath(`/members/${memberId}`);
@@ -91,40 +104,46 @@ export async function addPayment(memberId: string, amount: number, method: strin
 
 export async function renewMembership(memberId: string, planName: string, startDate: string, collectPayment: number, method: string) {
   const settings = await getSettings();
-  const members = await getMembers();
-  
-  const memberIndex = members.findIndex(m => m.id === memberId);
-  if (memberIndex === -1) throw new Error('Member not found');
-  
-  const member = members[memberIndex];
+  const { data: member, error: mError } = await supabase
+    .from('members')
+    .select('*')
+    .eq('id', memberId)
+    .single();
+
+  if (mError || !member) throw new Error('Member not found');
+
   const plan = settings.defaultPlans.find(p => p.name === planName);
   const planPrice = plan ? plan.price : 0;
-  
   const newEndDate = calculateEndDate(planName, startDate, settings.defaultPlans);
   
-  member.membershipPlan = planName;
-  member.membershipStart = startDate;
-  member.membershipEnd = newEndDate;
-  member.totalFee += planPrice;
-  member.paidAmount += collectPayment;
-  member.dueAmount = Math.max(0, member.totalFee - member.paidAmount);
-  member.updatedAt = new Date().toISOString();
-  member.status = 'active';
+  const newTotalFee = parseFloat(member.total_fee) + planPrice;
+  const newPaidAmount = parseFloat(member.paid_amount) + collectPayment;
+  const newDueAmount = Math.max(0, newTotalFee - newPaidAmount);
 
-  await saveMembers(members);
+  await supabase
+    .from('members')
+    .update({
+      membership_plan: planName,
+      membership_start: startDate,
+      membership_end: newEndDate,
+      total_fee: newTotalFee,
+      paid_amount: newPaidAmount,
+      due_amount: newDueAmount,
+      status: 'active',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', memberId);
 
   if (collectPayment > 0) {
-    const payments = await getPayments();
-    payments.push({
+    await supabase.from('payments').insert({
       id: await generatePaymentId(),
-      memberId: member.id,
-      memberName: member.fullName,
+      member_id: memberId,
+      member_name: member.full_name,
       amount: collectPayment,
-      paymentDate: new Date().toISOString(),
+      payment_date: new Date().toISOString(),
       method,
       note: 'Renewal payment',
     });
-    await savePayments(payments);
   }
 
   revalidatePath('/members');
@@ -133,47 +152,63 @@ export async function renewMembership(memberId: string, planName: string, startD
 }
 
 export async function updateSettings(formData: FormData) {
-  const settings = await getSettings();
-  settings.gymName = formData.get('gymName') as string;
-  settings.currency = formData.get('currency') as string;
+  const gymName = formData.get('gymName') as string;
+  const currency = formData.get('currency') as string;
   
-  await saveSettings(settings);
+  const { error } = await supabase
+    .from('settings')
+    .upsert({
+      id: 1,
+      gym_name: gymName,
+      currency: currency,
+    });
+
+  if (error) throw error;
+  
   revalidatePath('/settings');
   revalidatePath('/');
 }
 
 export async function deleteMember(memberId: string) {
-  const members = await getMembers();
-  const filtered = members.filter(m => m.id !== memberId);
-  await saveMembers(filtered);
-  
+  await supabase.from('members').delete().eq('id', memberId);
   revalidatePath('/members');
   revalidatePath('/dashboard');
   redirect('/members');
 }
 
 export async function deletePayment(paymentId: string) {
-  const payments = await getPayments();
-  const payment = payments.find(p => p.id === paymentId);
-  if (!payment) return;
+  const { data: payment, error: pError } = await supabase
+    .from('payments')
+    .select('*')
+    .eq('id', paymentId)
+    .single();
 
-  const members = await getMembers();
-  const memberIndex = members.findIndex(m => m.id === payment.memberId);
-  
-  if (memberIndex !== -1) {
-    const member = members[memberIndex];
-    member.paidAmount -= payment.amount;
-    member.dueAmount = Math.max(0, member.totalFee - member.paidAmount);
-    await saveMembers(members);
+  if (pError || !payment) return;
+
+  const { data: member } = await supabase
+    .from('members')
+    .select('*')
+    .eq('id', payment.member_id)
+    .single();
+
+  if (member) {
+    const newPaidAmount = parseFloat(member.paid_amount) - parseFloat(payment.amount);
+    const newDueAmount = Math.max(0, parseFloat(member.total_fee) - newPaidAmount);
+    
+    await supabase
+      .from('members')
+      .update({ 
+        paid_amount: newPaidAmount, 
+        due_amount: newDueAmount 
+      })
+      .eq('id', payment.member_id);
   }
 
-  const filteredPayments = payments.filter(p => p.id !== paymentId);
-  await savePayments(filteredPayments);
+  await supabase.from('payments').delete().eq('id', paymentId);
 
   revalidatePath('/payments');
   revalidatePath('/members');
-  if (payment.memberId) {
-    revalidatePath(`/members/${payment.memberId}`);
+  if (payment.member_id) {
+    revalidatePath(`/members/${payment.member_id}`);
   }
 }
-
