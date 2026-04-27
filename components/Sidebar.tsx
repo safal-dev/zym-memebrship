@@ -10,7 +10,8 @@ import {
   CalendarClock, 
   Settings, 
   LogOut,
-  X
+  X,
+  CreditCard
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMobileMenu } from '@/context/MobileMenuContext';
@@ -27,8 +28,10 @@ export function Sidebar({ gymName }: { gymName: string }) {
     { name: 'Members', icon: Users, href: '/members' },
     { name: 'Payments', icon: DollarSign, href: '/payments' },
     { name: 'Expiring', icon: CalendarClock, href: '/expired' },
+    { name: 'Billing', icon: CreditCard, href: '/billing' },
     { name: 'Settings', icon: Settings, href: '/settings' },
   ];
+
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
