@@ -6,6 +6,8 @@ import { Navbar } from '@/components/Navbar';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Gym Membership Management',
   description: 'Manage your gym members and payments easily.',
