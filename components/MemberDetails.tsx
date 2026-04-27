@@ -1,274 +1,445 @@
-'use client'
+'use client';
+
+import { useState } from 'react';
 import { Member, Payment, Settings } from '@/types';
-import { formatCurrency } from '@/lib/membership';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Dumbbell, 
-  Wallet,
-  Receipt,
-  RotateCcw,
-  Trash2,
-  Printer,
-  ChevronRight,
-  CheckCircle2
-} from 'lucide-react';
-import Link from 'next/link';
-import { deleteMember } from '@/app/actions';
+import { format, differenceInDays } from 'date-fns';
+import { getMemberStatus, formatCurrency } from '@/lib/membership';
+import { cn } from '@/lib/utils';
+import { renewMembership, addPayment, deleteMember, deletePayment } from '@/app/actions';
+
+import { Phone, MapPin, AlertCircle, CheckCircle, Trash2, Printer, ChevronLeft, CreditCard, Calendar, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
-interface MemberDetailsProps {
-  member: Member;
-  payments: Payment[];
-  settings: Settings;
-}
-
-export default function MemberDetails({ member, payments, settings }: MemberDetailsProps) {
+export function MemberDetails({ member, payments, settings }: { member: Member, payments: Payment[], settings: Settings }) {
   const router = useRouter();
+  const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  
+  const status = getMemberStatus(member.membershipEnd, member.dueAmount, member.status);
+  const remainingDays = differenceInDays(new Date(member.membershipEnd), new Date());
+  
+  // Modals state
+  const [renewPlan, setRenewPlan] = useState(settings.defaultPlans[0]?.name || 'Monthly');
+  const [renewPayment, setRenewPayment] = useState('');
+  
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentNote, setPaymentNote] = useState('');
 
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this member? All data will be lost.')) {
-      await deleteMember(member.id);
-      router.push('/members');
-    }
-  };
+  const [loading, setLoading] = useState(false);
 
   const handlePrint = (payment: Payment) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const receiptHtml = `
+    printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt - ${payment.id}</title>
+          <title>Payment Receipt - ${payment.id}</title>
           <style>
-            body { font-family: 'Inter', sans-serif; padding: 40px; color: #191b23; }
-            .header { border-bottom: 2px solid #004ac6; padding-bottom: 20px; margin-bottom: 30px; }
-            .gym-name { font-size: 24px; font-weight: 800; color: #004ac6; }
-            .receipt-title { font-size: 18px; font-weight: 700; margin-top: 10px; }
+            body { font-family: sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
             .details { margin-bottom: 30px; }
-            .row { display: flex; justify-between: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-            .label { font-weight: 600; color: #737686; }
-            .amount { font-size: 20px; font-weight: 800; color: #006c49; margin-top: 20px; }
-            .footer { margin-top: 50px; font-size: 12px; color: #737686; text-align: center; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+            .footer { margin-top: 50px; text-align: center; font-size: 0.8em; color: #666; }
+            .amount { font-size: 1.5em; font-weight: bold; margin-top: 20px; text-align: right; }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="gym-name">${settings.gymName}</div>
-            <div class="receipt-title">OFFICIAL PAYMENT RECEIPT</div>
+            <h1>${settings.gymName}</h1>
+            <p>Payment Receipt</p>
           </div>
           <div class="details">
-            <div class="row"><span class="label">Receipt ID:</span> <span>${payment.id}</span></div>
-            <div class="row"><span class="label">Date:</span> <span>${payment.paymentDate}</span></div>
-            <div class="row"><span class="label">Member Name:</span> <span>${payment.memberName}</span></div>
-            <div class="row"><span class="label">Member ID:</span> <span>${payment.memberId}</span></div>
-            <div class="row"><span class="label">Payment Method:</span> <span>${payment.method.toUpperCase()}</span></div>
+            <div class="row"><span>Receipt ID:</span> <strong>${payment.id}</strong></div>
+            <div class="row"><span>Date:</span> <strong>${format(new Date(payment.paymentDate), 'MMMM dd, yyyy')}</strong></div>
+            <div class="row"><span>Member:</span> <strong>${payment.memberName} (${payment.memberId})</strong></div>
+            <div class="row"><span>Method:</span> <strong>${payment.method.toUpperCase()}</strong></div>
+            <div class="row"><span>Note:</span> <strong>${payment.note || 'N/A'}</strong></div>
           </div>
-          <div class="amount">Total Amount: ${formatCurrency(payment.amount, settings.currency)}</div>
-          <div class="footer">Thank you for choosing ${settings.gymName}!</div>
-          <script>window.print();</script>
+          <div class="amount">
+            Total Amount: ${formatCurrency(payment.amount, settings.currency)}
+          </div>
+          <div class="footer">
+            <p>Thank you for your payment!</p>
+            <p>Generated on ${new Date().toLocaleString()}</p>
+          </div>
+          <script>window.print(); window.close();</script>
         </body>
       </html>
-    `;
-
-    printWindow.document.write(receiptHtml);
+    `);
     printWindow.document.close();
   };
 
-  const paymentProgress = Math.min(Math.round((member.paidAmount / member.totalFee) * 100), 100);
+  const handleRenew = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await renewMembership(member.id, renewPlan, format(new Date(), 'yyyy-MM-dd'), parseFloat(renewPayment) || 0, 'cash');
+      setShowRenewModal(false);
+      toast.success('Membership renewed successfully');
+    } catch (error) {
+      toast.error('Failed to renew membership');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await addPayment(member.id, parseFloat(paymentAmount), paymentMethod, paymentNote);
+      setShowPaymentModal(false);
+      setPaymentAmount('');
+      setPaymentNote('');
+      toast.success('Payment recorded successfully');
+    } catch (error) {
+      toast.error('Failed to record payment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to delete this member? This cannot be undone.')) {
+      try {
+        await deleteMember(member.id);
+        toast.success('Member deleted');
+      } catch (error) {
+        toast.error('Failed to delete member');
+      }
+    }
+  };
 
   return (
-    <div className="flex flex-col gap-8 animate-in pb-32">
-      {/* Profile Hero (GymConnect Style) */}
-      <section className="glass-card rounded-[2rem] p-6 flex flex-col md:flex-row items-center md:items-start gap-8 text-center md:text-left">
-        <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-md shrink-0">
-          <div className="w-full h-full bg-primary/5 flex items-center justify-center text-primary text-4xl font-black">
-            {member.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-          </div>
-        </div>
-        
-        <div className="flex-1 space-y-2 w-full">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2">
-            <div>
-              <h1 className="text-[32px] font-black text-on-background leading-tight">{member.fullName}</h1>
-              <p className="text-sm font-bold text-outline">ID: {member.id}</p>
-            </div>
-            <div className="flex justify-center md:justify-end gap-2 mt-2 md:mt-0">
-              <span className={`inline-flex items-center px-4 py-1.5 rounded-full font-bold text-[11px] tracking-wider uppercase ${
-                member.status === 'active' ? 'bg-secondary-container/30 text-secondary' : 
-                member.status === 'expired' ? 'bg-surface-variant text-on-surface-variant' :
-                'bg-red-50 text-red-600'
-              }`}>
-                {member.status}
-              </span>
-            </div>
-          </div>
-          <p className="text-sm text-on-surface-variant flex items-center justify-center md:justify-start gap-2 font-medium">
-            <Calendar className="w-4 h-4 text-primary" />
-            Joined {new Date(member.joinDate).toLocaleDateString()}
-          </p>
-        </div>
-      </section>
+    <div className="space-y-6 animate-in">
+      {/* Top Navigation */}
+      <div className="flex items-center gap-4">
+        <Link href="/members" className="p-2 bg-white rounded-xl border border-gray-100 text-gray-500 hover:text-gray-900 transition-colors">
+          <ChevronLeft className="w-6 h-6" />
+        </Link>
+        <h1 className="text-xl font-bold text-gray-900">Member Profile</h1>
+      </div>
 
-      {/* Information Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Contact Info */}
-        <section className="glass-card rounded-[2rem] p-8 space-y-6">
-          <h3 className="text-xl font-bold text-on-background flex items-center gap-3">
-            <Phone className="w-6 h-6 text-primary" />
-            Contact Details
-          </h3>
+      {/* Profile Header Card */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-blue-600 h-24 sm:h-32" />
+        <div className="px-6 pb-6 -mt-12">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div className="flex items-end gap-4">
+              <div className="w-24 h-24 rounded-3xl bg-white p-1 shadow-xl">
+                <div className="w-full h-full rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-black text-4xl">
+                  {member.fullName.charAt(0)}
+                </div>
+              </div>
+              <div className="pb-1">
+                <h2 className="text-2xl font-black text-gray-900 leading-tight">{member.fullName}</h2>
+                <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">{member.id}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => setShowRenewModal(true)} className="flex-1 sm:flex-none px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold text-sm shadow-lg shadow-blue-600/20">
+                RENEW
+              </button>
+              <button onClick={() => setShowPaymentModal(true)} className="flex-1 sm:flex-none px-6 py-2.5 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 transition-all font-bold text-sm">
+                PAY
+              </button>
+              <button onClick={handleDelete} className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-colors">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-6">
+            <span className={cn(
+              "px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest",
+              status === 'active' && "bg-emerald-100 text-emerald-700",
+              status === 'soon' && "bg-orange-100 text-orange-700",
+              status === 'expired' && "bg-rose-100 text-rose-700"
+            )}>
+              {status}
+            </span>
+            {member.dueAmount > 0 && (
+              <span className="px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest bg-rose-500 text-white shadow-md shadow-rose-500/20">
+                DUE: {formatCurrency(member.dueAmount, settings.currency)}
+              </span>
+            )}
+            <span className="px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 text-gray-500 uppercase tracking-widest">
+              Joined {format(new Date(member.joinDate), 'MMM yyyy')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Vital Info Cards */}
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-6">
+          <div className="flex items-center gap-3 text-gray-400 mb-2">
+            <User className="w-5 h-5" />
+            <h3 className="text-xs font-black uppercase tracking-widest">Contact & Info</h3>
+          </div>
+          
           <div className="space-y-4">
-            <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30">
-              <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
                 <Phone className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-outline uppercase">Phone</p>
-                <p className="text-sm font-bold text-on-surface">{member.phone}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone Number</p>
+                <p className="font-bold text-gray-900">{member.phone}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30">
-              <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
                 <MapPin className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-outline uppercase">Address</p>
-                <p className="text-sm font-bold text-on-surface truncate max-w-[200px]">{member.address}</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Address</p>
+                <p className="font-bold text-gray-900">{member.address || 'Not Provided'}</p>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Membership Plan */}
-        <section className="glass-card rounded-[2rem] p-8 space-y-6">
-          <h3 className="text-xl font-bold text-on-background flex items-center gap-3">
-            <Dumbbell className="w-6 h-6 text-primary" />
-            Current Plan
-          </h3>
-          <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/50 h-[calc(100%-48px)] flex flex-col justify-between shadow-sm">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[11px] font-bold tracking-widest text-primary uppercase">MEMBERSHIP TYPE</p>
-                <CheckCircle2 className="w-4 h-4 text-secondary" />
-              </div>
-              <p className="text-2xl font-black text-on-surface">{member.membershipPlan}</p>
+          {member.notes && (
+            <div className="pt-4 border-t border-gray-50">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Internal Notes</p>
+              <p className="text-sm text-gray-600 italic bg-gray-50 p-3 rounded-xl">"{member.notes}"</p>
             </div>
-            <div className="mt-6 pt-6 border-t border-outline-variant/30">
-              <p className="text-sm text-on-surface-variant flex items-center gap-2 font-medium">
-                <Calendar className="w-4 h-4" />
-                Renews: <span className="font-bold text-on-surface">{new Date(member.membershipEnd).toLocaleDateString()}</span>
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* Financial Summary */}
-      <section className="glass-card rounded-[2rem] p-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-on-background flex items-center gap-3">
-            <Wallet className="w-6 h-6 text-primary" />
-            Financial Summary
-          </h3>
-        </div>
-        
-        <div className="grid grid-cols-3 gap-0 divide-x divide-outline-variant/30 bg-surface-container-lowest rounded-2xl border border-outline-variant/50 overflow-hidden shadow-sm">
-          <div className="p-6 text-center">
-            <p className="text-[10px] font-bold text-outline mb-2 uppercase tracking-widest">Total</p>
-            <p className="text-xl font-black text-on-surface">{formatCurrency(member.totalFee, settings.currency)}</p>
-          </div>
-          <div className="p-6 text-center bg-secondary/5">
-            <p className="text-[10px] font-bold text-secondary mb-2 uppercase tracking-widest">Paid</p>
-            <p className="text-xl font-black text-secondary">{formatCurrency(member.paidAmount, settings.currency)}</p>
-          </div>
-          <div className="p-6 text-center bg-red-50">
-            <p className="text-[10px] font-bold text-red-600 mb-2 uppercase tracking-widest">Due</p>
-            <p className="text-xl font-black text-red-600">{formatCurrency(member.dueAmount, settings.currency)}</p>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex justify-between text-[11px] font-bold text-outline mb-2 uppercase tracking-widest px-1">
-            <span>Payment Progress</span>
-            <span className="text-secondary">{paymentProgress}%</span>
-          </div>
-          <div className="h-2 w-full bg-surface-variant rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-secondary rounded-full transition-all duration-1000" 
-              style={{ width: `${paymentProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      </section>
-
-      {/* Payment Timeline */}
-      <section className="glass-card rounded-[2rem] p-8 space-y-6">
-        <h3 className="text-xl font-bold text-on-background flex items-center gap-3">
-          <Receipt className="w-6 h-6 text-primary" />
-          Recent Payments
-        </h3>
-        <div className="space-y-4">
-          {payments.length > 0 ? (
-            payments.map((payment) => (
-              <div key={payment.id} className="flex gap-4 relative pb-6 group">
-                <div className="absolute left-[19px] top-10 bottom-0 w-px bg-surface-variant/50"></div>
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 z-10 border-2 border-white shadow-sm">
-                  <CreditCard className="w-5 h-5 text-on-surface-variant" />
-                </div>
-                <div className="flex-1 bg-surface-container-lowest rounded-2xl p-4 flex justify-between items-center shadow-sm border border-outline-variant/20 hover:border-primary/30 transition-all">
-                  <div>
-                    <p className="font-bold text-on-surface">Payment Received</p>
-                    <p className="text-sm text-outline">{new Date(payment.paymentDate).toLocaleDateString()}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-secondary">+{formatCurrency(payment.amount, settings.currency)}</span>
-                    <button 
-                      onClick={() => handlePrint(payment)}
-                      className="text-outline hover:text-primary transition-colors p-2 hover:bg-primary/5 rounded-full"
-                    >
-                      <Printer className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-center py-6 text-on-surface-variant">No payments recorded yet.</p>
           )}
         </div>
-      </section>
 
-      {/* Fixed Bottom Quick Actions (GymConnect Mobile Bottom Sheet) */}
-      <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-3xl rounded-t-[3rem] border-t border-outline-variant/30 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-[60] p-6 pb-10">
-        <div className="w-12 h-1.5 bg-outline-variant/50 rounded-full mx-auto mb-8"></div>
-        <div className="grid grid-cols-4 gap-3 max-w-3xl mx-auto">
-          <button className="h-16 bg-primary text-white rounded-2xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-primary/90 active:scale-95 transition-all shadow-lg shadow-primary/20">
-            <RotateCcw className="w-5 h-5" />
-            <span className="text-[10px] uppercase font-black">Renew</span>
-          </button>
-          <button className="h-16 bg-surface-container-lowest border border-outline-variant/50 text-on-surface rounded-2xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-surface-container-low active:scale-95 transition-all">
-            <Wallet className="w-5 h-5" />
-            <span className="text-[10px] uppercase font-black">Pay</span>
-          </button>
-          <button className="h-16 bg-surface-container-lowest border border-outline-variant/50 text-on-surface rounded-2xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-surface-container-low active:scale-95 transition-all">
-            <Receipt className="w-5 h-5" />
-            <span className="text-[10px] uppercase font-black">Logs</span>
-          </button>
-          <button 
-            onClick={handleDelete}
-            className="h-16 bg-red-50 border border-red-200 text-red-600 rounded-2xl font-bold flex flex-col items-center justify-center gap-1 hover:bg-red-100 active:scale-95 transition-all"
-          >
-            <Trash2 className="w-5 h-5" />
-            <span className="text-[10px] uppercase font-black">Delete</span>
-          </button>
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-6">
+          <div className="flex items-center gap-3 text-gray-400 mb-2">
+            <Calendar className="w-5 h-5" />
+            <h3 className="text-xs font-black uppercase tracking-widest">Membership</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Current Plan</p>
+                <p className="font-black text-gray-900">{member.membershipPlan}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Remaining</p>
+                <p className={cn(
+                  "font-black",
+                  status === 'expired' ? 'text-rose-600' : 'text-blue-600'
+                )}>{status === 'expired' ? 'Expired' : `${remainingDays} Days`}</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Start Date</p>
+                <p className="font-bold text-gray-900">{format(new Date(member.membershipStart), 'MMM dd, yyyy')}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">End Date</p>
+                <p className="font-bold text-gray-900">{format(new Date(member.membershipEnd), 'MMM dd, yyyy')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-6">
+          <div className="flex items-center gap-3 text-gray-400 mb-2">
+            <CreditCard className="w-5 h-5" />
+            <h3 className="text-xs font-black uppercase tracking-widest">Financials</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Total Revenue</span>
+              <span className="font-bold text-gray-900">{formatCurrency(member.totalFee, settings.currency)}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="font-bold text-gray-400 uppercase tracking-wider text-[10px]">Amount Paid</span>
+              <span className="font-bold text-emerald-600">{formatCurrency(member.paidAmount, settings.currency)}</span>
+            </div>
+            <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
+              <span className="font-black text-gray-900 uppercase tracking-widest text-xs">Current Due</span>
+              <span className={cn(
+                "text-xl font-black",
+                member.dueAmount > 0 ? "text-rose-600" : "text-emerald-600"
+              )}>{formatCurrency(member.dueAmount, settings.currency)}</span>
+            </div>
+            {member.dueAmount > 0 && (
+              <button 
+                onClick={() => {
+                  setPaymentAmount(member.dueAmount.toString());
+                  setShowPaymentModal(true);
+                }}
+                className="w-full mt-2 py-3 bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 transition-all font-black text-xs tracking-widest uppercase"
+              >
+                Clear Outstanding
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Payment History Table (Simplified for Mobile) */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-50">
+          <h3 className="font-black text-gray-900 uppercase tracking-widest text-xs">Payment Timeline</h3>
+        </div>
+        <div className="divide-y divide-gray-50">
+          {payments.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm italic">No records found</div>
+          ) : (
+            payments.map(p => (
+              <div key={p.id} className="p-4 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <DollarSignIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{formatCurrency(p.amount, settings.currency)}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{format(new Date(p.paymentDate), 'MMM dd, yyyy')} • {p.method}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handlePrint(p)}
+                    className="p-2 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                  >
+                    <Printer className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      if (confirm('Delete this payment record?')) {
+                        await deletePayment(p.id);
+                        toast.success('Payment deleted');
+                      }
+                    }}
+                    className="p-2 text-gray-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Modals remain same but with updated styling */}
+      {showRenewModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100] backdrop-blur-sm">
+          <form onSubmit={handleRenew} className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom sm:slide-in-from-center duration-300">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 sm:hidden" />
+            <h3 className="text-xl font-black text-gray-900 mb-6">Renew Membership</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Select New Plan</label>
+                <select 
+                  value={renewPlan} 
+                  onChange={(e) => {
+                    const plan = settings.defaultPlans.find(p => p.name === e.target.value);
+                    setRenewPlan(e.target.value);
+                    if (plan) setRenewPayment(plan.price.toString());
+                  }}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold"
+                >
+                  {settings.defaultPlans.map(p => (
+                    <option key={p.name} value={p.name}>{p.name} ({p.months} Month)</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Amount Collected ({settings.currency})</label>
+                <input 
+                  type="number" 
+                  value={renewPayment} 
+                  onChange={(e) => setRenewPayment(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold"
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <button type="submit" disabled={loading} className="w-full py-3 bg-blue-600 text-white rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-blue-600/20">
+                {loading ? 'Processing...' : 'Confirm Renewal'}
+              </button>
+              <button type="button" onClick={() => setShowRenewModal(false)} className="w-full py-3 bg-gray-50 text-gray-500 rounded-2xl font-black text-xs tracking-widest uppercase">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[100] backdrop-blur-sm">
+          <form onSubmit={handlePayment} className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom sm:slide-in-from-center duration-300">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6 sm:hidden" />
+            <h3 className="text-xl font-black text-gray-900 mb-6">Add Payment</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Amount ({settings.currency})</label>
+                <input 
+                  required
+                  type="number" 
+                  value={paymentAmount} 
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Method</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold">
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="digital_wallet">Digital Wallet</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Note</label>
+                <input 
+                  type="text" 
+                  value={paymentNote} 
+                  onChange={(e) => setPaymentNote(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 font-bold"
+                  placeholder="e.g. Partial payment"
+                />
+              </div>
+            </div>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <button type="submit" disabled={loading} className="w-full py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs tracking-widest uppercase shadow-lg shadow-emerald-600/20">
+                {loading ? 'Saving...' : 'Record Payment'}
+              </button>
+              <button type="button" onClick={() => setShowPaymentModal(false)} className="w-full py-3 bg-gray-50 text-gray-500 rounded-2xl font-black text-xs tracking-widest uppercase">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
+  );
+}
+
+function DollarSignIcon(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="12" x2="12" y1="2" y2="22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
   );
 }

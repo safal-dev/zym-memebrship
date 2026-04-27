@@ -1,161 +1,199 @@
-'use client'
+'use client';
+
 import { useState } from 'react';
 import { Member } from '@/types';
-import { formatCurrency } from '@/lib/membership';
-import { 
-  Search, 
-  MoreVertical, 
-  Dumbbell, 
-  Calendar, 
-  Download,
-  AlertCircle,
-  History
-} from 'lucide-react';
 import Link from 'next/link';
-import { exportToCSV } from '@/lib/export-utils';
+import { Search, Plus, Download, Eye, ChevronRight } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { getMemberStatus } from '@/lib/membership';
+import { exportMembersToCSV } from '@/lib/export-utils';
 
-interface MemberTableProps {
-  members: Member[];
-}
+export function MemberTable({ initialMembers }: { initialMembers: Member[] }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
 
-export default function MemberTable({ members }: MemberTableProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'soon' | 'expired' | 'due'>('all');
-
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = member.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.id.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredMembers = initialMembers.filter(m => {
+    const matchesSearch = m.fullName.toLowerCase().includes(search.toLowerCase()) || m.phone.includes(search);
+    const status = getMemberStatus(m.membershipEnd, m.dueAmount, m.status);
     
-    if (filter === 'all') return matchesSearch;
-    if (filter === 'due') return matchesSearch && member.dueAmount > 0;
-    return matchesSearch && member.status === filter;
+    if (filter === 'active') return matchesSearch && status === 'active';
+    if (filter === 'expired') return matchesSearch && status === 'expired';
+    if (filter === 'soon') return matchesSearch && status === 'soon';
+    if (filter === 'due') return matchesSearch && m.dueAmount > 0;
+    
+    return matchesSearch;
   });
 
-  const handleExport = () => {
-    exportToCSV(filteredMembers, `members-${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
   return (
-    <div className="flex flex-col gap-6 animate-in">
-      {/* Header & Search (GymConnect Mobile Pattern) */}
-      <section className="flex flex-col gap-4 sticky top-16 z-40 bg-background/95 backdrop-blur-sm pb-2">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-extrabold text-on-background">Member Directory</h2>
-            <p className="text-sm text-on-surface-variant mt-1">Manage and search active memberships.</p>
-          </div>
-          <button 
-            onClick={handleExport}
-            className="w-12 h-12 flex items-center justify-center rounded-default bg-surface-container-high text-on-surface hover:bg-surface-variant transition-colors shadow-sm"
-          >
-            <Download className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-5 h-5" />
-          <input 
+    <div className="space-y-4">
+      {/* Search and Filters */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
             type="text"
-            placeholder="Search by name, ID or plan..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-tap-target-min pl-12 pr-4 rounded-default bg-surface border border-outline-variant focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-body-lg text-on-surface placeholder:text-on-surface-variant"
+            placeholder="Search members..."
+            className="w-full pl-10 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
-        {/* Filter Chips */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {(['all', 'active', 'soon', 'expired', 'due'] as const).map((f) => (
+        
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {['all', 'active', 'soon', 'expired', 'due'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "flex-shrink-0 px-5 h-9 rounded-full font-semibold text-sm whitespace-nowrap transition-all",
+                "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all",
                 filter === f 
-                  ? "bg-primary-container text-on-primary-container shadow-sm" 
-                  : "bg-surface-container border border-outline-variant text-on-surface-variant hover:bg-surface-variant"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               )}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Member List (Mobile Card Pattern) */}
-      <div className="flex flex-col gap-4">
-        {filteredMembers.length > 0 ? (
-          filteredMembers.map((member) => (
-            <Link 
-              key={member.id} 
-              href={`/members/${member.id}`}
-              className="bg-surface-container-lowest rounded-default p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(37,99,235,0.05)] border border-white/40 active:scale-[0.98] transition-all group"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/5 flex items-center justify-center text-primary font-bold text-lg shrink-0 shadow-sm overflow-hidden">
-                {member.photo ? (
-                  <img src={member.photo} alt={member.fullName} className="w-full h-full object-cover" />
-                ) : (
-                  member.fullName.split(' ').map(n => n[0]).join('').toUpperCase()
-                )}
-              </div>
-              
-              <div className="flex-grow min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-[16px] font-bold text-on-background truncate">{member.fullName}</h3>
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ml-auto",
-                    getStatusBadgeStyle(member.status)
-                  )}>
-                    {member.status}
-                  </span>
+      {/* Action Bar */}
+      <div className="flex justify-between items-center px-1">
+        <p className="text-sm text-gray-500 font-medium">
+          Showing {filteredMembers.length} members
+        </p>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => exportMembersToCSV(filteredMembers)}
+            className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-600 hover:bg-gray-50 shadow-sm"
+            title="Export CSV"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <Link 
+            href="/members/add" 
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-md shadow-blue-600/20 font-medium text-sm"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">Add Member</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Table / List View */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 text-gray-500 text-xs uppercase tracking-wider">
+                <th className="px-6 py-4 font-semibold">Member</th>
+                <th className="px-6 py-4 font-semibold">Plan</th>
+                <th className="px-6 py-4 font-semibold">Expiry</th>
+                <th className="px-6 py-4 font-semibold">Status</th>
+                <th className="px-6 py-4 font-semibold">Due</th>
+                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredMembers.map((m) => {
+                const status = getMemberStatus(m.membershipEnd, m.dueAmount, m.status);
+                return (
+                  <tr key={m.id} className="hover:bg-gray-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-sm">
+                          {m.fullName.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{m.fullName}</p>
+                          <p className="text-xs text-gray-500">{m.phone}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{m.membershipPlan}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {format(new Date(m.membershipEnd), 'MMM dd, yyyy')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-xs font-semibold",
+                        status === 'active' && "bg-emerald-50 text-emerald-600",
+                        status === 'soon' && "bg-orange-50 text-orange-600",
+                        status === 'expired' && "bg-rose-50 text-rose-600"
+                      )}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {m.dueAmount > 0 ? (
+                        <span className="text-rose-600 font-bold">{m.dueAmount} NPR</span>
+                      ) : (
+                        <span className="text-emerald-600 font-medium">Paid</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Link href={`/members/${m.id}`} className="inline-flex items-center justify-center p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
+                        <Eye className="w-5 h-5" />
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile List View */}
+        <div className="lg:hidden divide-y divide-gray-100">
+          {filteredMembers.map((m) => {
+            const status = getMemberStatus(m.membershipEnd, m.dueAmount, m.status);
+            return (
+              <Link 
+                key={m.id} 
+                href={`/members/${m.id}`}
+                className="flex items-center justify-between p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-600/20">
+                    {m.fullName.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">{m.fullName}</h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={cn(
+                        "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded",
+                        status === 'active' && "bg-emerald-100 text-emerald-700",
+                        status === 'soon' && "bg-orange-100 text-orange-700",
+                        status === 'expired' && "bg-rose-100 text-rose-700"
+                      )}>
+                        {status}
+                      </span>
+                      {m.dueAmount > 0 && (
+                        <span className="text-[10px] font-bold text-rose-600">
+                          {m.dueAmount} Due
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                
-                <div className="flex items-center gap-1.5 text-on-surface-variant mt-1">
-                  <Dumbbell className="w-3.5 h-3.5" />
-                  <span className="text-sm">{member.membershipPlan}</span>
-                </div>
-                
-                <div className="flex items-center gap-1.5 text-on-surface-variant mt-1">
-                  {member.status === 'expired' ? (
-                    <History className="w-3.5 h-3.5" />
-                  ) : member.dueAmount > 0 ? (
-                    <AlertCircle className="w-3.5 h-3.5 text-error" />
-                  ) : (
-                    <Calendar className="w-3.5 h-3.5" />
-                  )}
-                  <span className={cn(
-                    "text-[12px]",
-                    member.dueAmount > 0 ? "text-error font-medium" : "text-on-surface-variant"
-                  )}>
-                    {member.status === 'expired' ? `Expired: ${member.membershipEnd}` : `Expires: ${member.membershipEnd}`}
-                    {member.dueAmount > 0 && ` • Due: ${formatCurrency(member.dueAmount, 'NPR')}`}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="text-outline group-hover:text-primary transition-colors">
-                <MoreVertical className="w-5 h-5" />
-              </div>
-            </Link>
-          ))
-        ) : (
-          <div className="text-center py-20 bg-surface-container-low rounded-3xl border-2 border-dashed border-outline-variant">
-            <Search className="w-12 h-12 text-outline-variant mx-auto mb-4" />
-            <p className="text-on-surface-variant font-medium">No members found matching your search.</p>
+                <ChevronRight className="w-5 h-5 text-gray-300" />
+              </Link>
+            );
+          })}
+        </div>
+
+        {filteredMembers.length === 0 && (
+          <div className="px-6 py-12 text-center">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-gray-300" />
+            </div>
+            <h3 className="text-gray-900 font-semibold">No members found</h3>
+            <p className="text-gray-500 text-sm mt-1">Try adjusting your filters or search terms.</p>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function getStatusBadgeStyle(status: string) {
-  switch (status) {
-    case 'active': return 'bg-secondary-container/30 text-secondary';
-    case 'soon': return 'bg-warning-container/30 text-warning';
-    case 'expired': return 'bg-surface-variant text-on-surface-variant';
-    default: return 'bg-error-container/40 text-on-error-container';
-  }
 }

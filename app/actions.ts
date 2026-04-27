@@ -151,3 +151,29 @@ export async function deleteMember(memberId: string) {
   revalidatePath('/dashboard');
   redirect('/members');
 }
+
+export async function deletePayment(paymentId: string) {
+  const payments = await getPayments();
+  const payment = payments.find(p => p.id === paymentId);
+  if (!payment) return;
+
+  const members = await getMembers();
+  const memberIndex = members.findIndex(m => m.id === payment.memberId);
+  
+  if (memberIndex !== -1) {
+    const member = members[memberIndex];
+    member.paidAmount -= payment.amount;
+    member.dueAmount = Math.max(0, member.totalFee - member.paidAmount);
+    await saveMembers(members);
+  }
+
+  const filteredPayments = payments.filter(p => p.id !== paymentId);
+  await savePayments(filteredPayments);
+
+  revalidatePath('/payments');
+  revalidatePath('/members');
+  if (payment.memberId) {
+    revalidatePath(`/members/${payment.memberId}`);
+  }
+}
+
