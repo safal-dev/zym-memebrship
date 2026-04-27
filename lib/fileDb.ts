@@ -110,8 +110,14 @@ export async function getSettings(): Promise<Settings> {
       gymName: 'FitZone Gym',
       gymLogo: '',
       currency: 'NPR',
-      defaultPlans: [],
+      defaultPlans: [
+        { name: 'Monthly', months: 1, price: 3000 },
+        { name: '3 Months', months: 3, price: 8000 },
+        { name: '6 Months', months: 6, price: 15000 },
+        { name: 'Yearly', months: 12, price: 28000 },
+      ],
     };
+
   }
 
   return {
