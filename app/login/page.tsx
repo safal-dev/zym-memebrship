@@ -21,11 +21,13 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.push('/dashboard');
+      const data = await res.json();
+      router.push(data.redirect || '/dashboard');
       router.refresh();
     } else {
       setError('Invalid username or password');
     }
+
   };
 
   return (

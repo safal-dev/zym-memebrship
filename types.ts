@@ -39,3 +39,18 @@ export interface Settings {
   adminPassword?: string;
 }
 
+export interface Gym {
+  id: string;
+  name: string;
+  ownerEmail: string;
+  adminPassword?: string;
+  planName: string;
+  status: 'active' | 'expired' | 'suspended';
+  createdAt: string;
+  expiryDate: string;
+  // Stats for super admin
+  totalMembers?: number;
+  totalRevenue?: number;
+}
+
+
