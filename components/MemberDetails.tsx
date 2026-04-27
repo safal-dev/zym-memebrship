@@ -105,14 +105,26 @@ export function MemberDetails({ member, payments, settings }: { member: Member, 
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this member? This cannot be undone.')) {
+      setLoading(true);
       try {
         await deleteMember(member.id);
-        toast.success('Member deleted');
-      } catch (error) {
-        toast.error('Failed to delete member');
+        toast.success('Member deleted successfully');
+        // Small delay to let the toast show before navigating
+        setTimeout(() => {
+          router.push('/members');
+          router.refresh();
+        }, 1000);
+      } catch (error: any) {
+        // Only show error if it's not a redirect error
+        if (error.message !== 'NEXT_REDIRECT') {
+          toast.error('Failed to delete member');
+        }
+      } finally {
+        setLoading(false);
       }
     }
   };
+
 
   return (
     <div className="space-y-6 animate-in">

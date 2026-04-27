@@ -189,8 +189,8 @@ export async function deleteMember(memberId: string) {
   await supabase.from('members').delete().eq('id', memberId);
   revalidatePath('/members');
   revalidatePath('/dashboard');
-  redirect('/members');
 }
+
 
 export async function deletePayment(paymentId: string, password?: string) {
   const settings = await getSettings();
