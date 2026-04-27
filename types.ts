@@ -27,13 +27,15 @@ export interface Payment {
   note: string;
 }
 
+export interface MembershipPlan {
+  name: string;
+  months: number;
+  price: number;
+}
+
 export interface Settings {
   gymName: string;
   gymLogo: string;
   currency: string;
-  defaultPlans: {
-    name: string;
-    months: number;
-    price: number;
-  }[];
+  defaultPlans: MembershipPlan[];
 }

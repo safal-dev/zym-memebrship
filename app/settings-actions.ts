@@ -2,6 +2,14 @@
 
 import { getSettings, saveSettings } from '@/lib/fileDb';
 import { revalidatePath } from 'next/cache';
+import { Settings } from '@/types';
+
+export async function updateSettings(settings: Settings) {
+  await saveSettings(settings);
+  revalidatePath('/settings');
+  revalidatePath('/dashboard');
+  revalidatePath('/layout');
+}
 
 export async function addPlan(name: string, months: number, price: number) {
   const settings = await getSettings();
