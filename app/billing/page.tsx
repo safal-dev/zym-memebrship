@@ -49,24 +49,25 @@ export default function BillingPage() {
         <p className="text-sm text-gray-500 mt-1">Select a plan that fits your gym size.</p>
       </div>
 
-      {/* Current Subscription - Minimalist Card */}
-      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-6">
+      {/* Current Subscription - Rounded Blue Card */}
+      <div className="bg-blue-600 rounded-[2rem] p-8 flex flex-wrap items-center justify-between gap-6 shadow-xl shadow-blue-100 text-white">
         <div className="space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Plan</p>
-          <h2 className="text-lg font-semibold text-gray-900">Free Trial</h2>
+          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Active Plan</p>
+          <h2 className="text-xl font-semibold">Free Trial</h2>
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Member Limit</p>
-          <p className="text-sm font-medium text-gray-600">300 Members</p>
+          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Member Limit</p>
+          <p className="text-sm font-medium">300 Members</p>
         </div>
         <div className="space-y-1">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Renewal Date</p>
-          <p className="text-sm font-medium text-gray-600">May 27, 2026</p>
+          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Renewal Date</p>
+          <p className="text-sm font-medium">May 27, 2026</p>
         </div>
-        <div className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold uppercase tracking-widest">
+        <div className="px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-widest">
           Active
         </div>
       </div>
+
 
       {/* Plans List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
