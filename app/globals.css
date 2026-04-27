@@ -19,25 +19,41 @@ body {
     -webkit-appearance: none;
     margin: 0;
   }
-}
 
-/* Custom Utilities */
-.glass {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* Custom Utilities */
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-lg border border-white/10;
+  }
+
+  /* Safe Area Padding for Mobile */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Custom Rounded Corners from Stitch Design */
+  .rounded-3xl-top {
+    border-top-left-radius: 2rem;
+    border-top-right-radius: 2rem;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 .card-gradient {
   background: linear-gradient(to bottom right, #ffffff, #f9fafb);
 }
 
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
 }
 
 /* Custom Scrollbar for Desktop */

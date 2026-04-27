@@ -146,43 +146,53 @@ export function MemberTable({ initialMembers }: { initialMembers: Member[] }) {
         </div>
 
         {/* Mobile List View */}
-        <div className="lg:hidden divide-y divide-gray-100">
+        <div className="lg:hidden space-y-3 px-2">
           {filteredMembers.map((m) => {
             const status = getMemberStatus(m.membershipEnd, m.dueAmount, m.status);
             return (
               <Link 
                 key={m.id} 
                 href={`/members/${m.id}`}
-                className="flex items-center justify-between p-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-5 bg-white rounded-[2rem] border border-gray-100 shadow-sm active:scale-[0.98] transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-600/20">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-600/20">
                     {m.fullName.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900">{m.fullName}</h4>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <h4 className="font-black text-gray-900 tracking-tight">{m.fullName}</h4>
+                    <div className="flex items-center gap-2 mt-1">
                       <span className={cn(
-                        "text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded",
-                        status === 'active' && "bg-emerald-100 text-emerald-700",
-                        status === 'soon' && "bg-orange-100 text-orange-700",
-                        status === 'expired' && "bg-rose-100 text-rose-700"
+                        "text-[10px] uppercase tracking-[0.15em] font-black px-2 py-0.5 rounded-lg",
+                        status === 'active' && "bg-emerald-50 text-emerald-600",
+                        status === 'soon' && "bg-orange-50 text-orange-600",
+                        status === 'expired' && "bg-rose-50 text-rose-600"
                       )}>
                         {status}
                       </span>
                       {m.dueAmount > 0 && (
-                        <span className="text-[10px] font-bold text-rose-600">
-                          {m.dueAmount} Due
+                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-lg">
+                          DUE
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-300" />
+                <div className="flex flex-col items-end gap-1">
+                  <ChevronRight className="w-5 h-5 text-gray-300" />
+                </div>
               </Link>
             );
           })}
         </div>
+
+        {/* Mobile Add FAB */}
+        <Link 
+          href="/members/add" 
+          className="lg:hidden fixed bottom-24 right-6 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl shadow-blue-600/40 flex items-center justify-center z-40 active:scale-90 transition-transform"
+        >
+          <Plus className="w-8 h-8 stroke-[3]" />
+        </Link>
 
         {filteredMembers.length === 0 && (
           <div className="px-6 py-12 text-center">
