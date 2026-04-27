@@ -163,7 +163,11 @@ export async function updateSettings(formData: FormData) {
       currency: currency,
     });
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase Settings Error:', error);
+    throw new Error(`Failed to update settings: ${error.message}`);
+  }
+
   
   revalidatePath('/settings');
   revalidatePath('/');
