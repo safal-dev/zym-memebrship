@@ -12,45 +12,41 @@ export function Navbar({ gymName }: { gymName: string }) {
 
   const titles: { [key: string]: string } = {
     '/dashboard': 'Dashboard',
-    '/members': 'Directory',
-    '/members/add': 'New Entry',
-    '/payments': 'Revenue',
-    '/expired': 'Tracking',
-    '/settings': 'Systems',
+    '/members': 'Member Directory',
+    '/members/add': 'Add New Member',
+    '/payments': 'Financial History',
+    '/expired': 'Expiry Tracking',
+    '/settings': 'System Settings',
   };
 
   const title = Object.keys(titles).find(key => pathname.startsWith(key)) ? titles[Object.keys(titles).find(key => pathname.startsWith(key))!] : 'Dashboard';
 
   return (
-    <header className="h-24 glassmorphism flex items-center justify-between px-6 md:px-10 sticky top-0 z-30 border-b border-onyx-outline/5">
-      <div className="flex items-center gap-6">
+    <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+      <div className="flex items-center gap-4">
         <button 
           onClick={toggle}
-          className="p-3 text-onyx-on-surface hover:bg-onyx-surface-highest/20 rounded-2xl lg:hidden transition-onyx"
+          className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl lg:hidden transition-colors"
         >
           <Menu className="w-6 h-6" />
         </button>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black tracking-[0.2em] text-onyx-on-surface-variant uppercase mb-0.5">Management</span>
-          <h2 className="text-2xl font-display font-black text-onyx-on-surface tracking-tight">
-            {title}
-          </h2>
-        </div>
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+          {title}
+        </h2>
       </div>
 
-      <div className="flex items-center gap-4">
-        <button className="p-3 text-onyx-on-surface-variant hover:text-onyx-on-surface hover:bg-onyx-surface-highest/20 rounded-2xl transition-onyx relative">
+      <div className="flex items-center gap-2 md:gap-4">
+        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors hidden sm:block">
           <Bell className="w-6 h-6" />
-          <span className="absolute top-3 right-3 w-2 h-2 bg-onyx-tertiary rounded-full border-2 border-onyx-background" />
         </button>
-        <div className="h-8 w-[1px] bg-onyx-outline/10 mx-2 hidden md:block" />
-        <div className="flex items-center gap-4 pl-2 group cursor-pointer">
-          <div className="flex flex-col text-right hidden sm:block">
-            <p className="text-sm font-display font-black text-onyx-on-surface">Admin</p>
-            <p className="text-[10px] font-bold text-onyx-tertiary uppercase tracking-wider">Superuser</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-onyx-surface-highest flex items-center justify-center text-onyx-primary shadow-lg transition-onyx group-hover:scale-105">
+        <div className="h-10 w-[1px] bg-gray-100 mx-2 hidden md:block" />
+        <div className="flex items-center gap-3 pl-2">
+          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
             <User className="w-6 h-6" />
+          </div>
+          <div className="hidden sm:block">
+            <p className="text-sm font-bold text-gray-900">Admin</p>
+            <p className="text-xs text-gray-500">{gymName} Manager</p>
           </div>
         </div>
       </div>

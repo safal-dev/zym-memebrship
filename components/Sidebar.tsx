@@ -23,9 +23,9 @@ export function Sidebar({ gymName }: { gymName: string }) {
   if (pathname === '/login') return null;
 
   const menuItems = [
-    { name: 'Home', icon: LayoutDashboard, href: '/dashboard' },
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Members', icon: Users, href: '/members' },
-    { name: 'Revenue', icon: DollarSign, href: '/payments' },
+    { name: 'Payments', icon: DollarSign, href: '/payments' },
     { name: 'Expiring', icon: CalendarClock, href: '/expired' },
     { name: 'Settings', icon: Settings, href: '/settings' },
   ];
@@ -42,60 +42,48 @@ export function Sidebar({ gymName }: { gymName: string }) {
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-md"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
           onClick={close}
         />
       )}
 
       {/* Sidebar Content */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-onyx-background border-r border-onyx-outline/10 transform transition-transform duration-500 ease-[cubic-bezier(0.2,0,0,1)] lg:relative lg:translate-x-0",
+        "fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex items-center justify-between h-24 px-8">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-[0.2em] text-onyx-tertiary uppercase mb-1">Kinetic Sanctuary</span>
-            <h1 className="text-xl font-display font-black text-onyx-on-surface tracking-tight truncate">
-              {gymName}
-            </h1>
-          </div>
-          <button onClick={close} className="lg:hidden p-2 text-onyx-on-surface-variant hover:text-white transition-onyx">
+        <div className="flex items-center justify-between h-20 border-b border-gray-800 px-6">
+          <h1 className="text-xl font-bold text-white tracking-wider flex items-center gap-2 truncate">
+            <span className="text-blue-500 uppercase">{gymName.split(' ')[0]}</span> {gymName.split(' ').slice(1).join(' ')}
+          </h1>
+          <button onClick={close} className="lg:hidden p-2 text-gray-400 hover:text-white">
             <X className="w-6 h-6" />
           </button>
         </div>
         
-        <nav className="flex-1 px-4 py-8 space-y-1">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={close}
-                className={cn(
-                  "flex items-center gap-4 px-6 py-4 rounded-2xl transition-onyx group relative overflow-hidden",
-                  isActive 
-                    ? "bg-onyx-surface text-onyx-primary" 
-                    : "text-onyx-on-surface-variant hover:text-onyx-on-surface hover:bg-onyx-surface/40"
-                )}
-              >
-                <item.icon className={cn(
-                  "w-5 h-5 transition-onyx",
-                  isActive ? "text-onyx-tertiary" : "group-hover:scale-110"
-                )} />
-                <span className="font-display font-bold text-sm tracking-wide">{item.name}</span>
-                {isActive && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-onyx-tertiary rounded-l-full" />
-                )}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          {menuItems.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={close}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium",
+                pathname === item.href 
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.name}
+            </Link>
+          ))}
         </nav>
 
-        <div className="p-6">
+        <div className="p-4 border-t border-gray-800">
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-4 w-full px-6 py-4 text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-onyx font-display font-bold text-sm tracking-wide"
+            className="flex items-center gap-3 w-full px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-medium"
           >
             <LogOut className="w-5 h-5" />
             Logout

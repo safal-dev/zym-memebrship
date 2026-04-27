@@ -5,30 +5,36 @@ interface StatsCardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
-  color: 'blue' | 'green' | 'red' | 'purple' | 'orange';
+  trend?: string;
+  trendUp?: boolean;
+  color?: 'blue' | 'green' | 'red' | 'orange' | 'purple';
 }
 
-export function StatsCard({ title, value, icon: Icon }: StatsCardProps) {
+const colorStyles = {
+  blue: 'bg-blue-50 text-blue-600',
+  green: 'bg-emerald-50 text-emerald-600',
+  red: 'bg-rose-50 text-rose-600',
+  orange: 'bg-orange-50 text-orange-600',
+  purple: 'bg-purple-50 text-purple-600',
+};
+
+export function StatsCard({ title, value, icon: Icon, trend, trendUp, color = 'blue' }: StatsCardProps) {
   return (
-    <div className="bg-onyx-surface p-6 rounded-[1.5rem] shadow-sm relative overflow-hidden group hover:bg-onyx-surface-high transition-onyx">
-      {/* Subtle Background Icon Decoration */}
-      <Icon className="absolute -right-4 -bottom-4 w-24 h-24 text-onyx-outline/5 transition-onyx group-hover:scale-110 group-hover:text-onyx-outline/10" />
-      
-      <div className="relative z-10 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-onyx-background text-onyx-on-surface-variant group-hover:text-onyx-tertiary transition-onyx">
-            <Icon className="w-5 h-5" />
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-onyx-on-surface-variant">
-            {title}
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-between transition-all hover:shadow-md">
+      <div>
+        <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+        <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
+        {trend && (
+          <p className={cn(
+            "text-xs font-medium mt-2",
+            trendUp ? "text-emerald-600" : "text-rose-600"
+          )}>
+            {trendUp ? '↑' : '↓'} {trend}
           </p>
-        </div>
-        
-        <div>
-          <h3 className="stats-value text-4xl text-onyx-tertiary">
-            {value}
-          </h3>
-        </div>
+        )}
+      </div>
+      <div className={cn("p-4 rounded-xl", colorStyles[color])}>
+        <Icon className="w-7 h-7" />
       </div>
     </div>
   );
