@@ -1,52 +1,43 @@
-'use client';
-
+'use Intelligence'
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Menu, User } from 'lucide-react';
-import { useMobileMenu } from '@/context/MobileMenuContext';
+import { Settings } from '@/types';
+import { 
+  LayoutDashboard, 
+  Users, 
+  CreditCard, 
+  Settings as SettingsIcon,
+  Bell
+} from 'lucide-react';
 
-export function Navbar({ gymName }: { gymName: string }) {
+interface NavbarProps {
+  settings: Settings;
+}
+
+export default function Navbar({ settings }: NavbarProps) {
   const pathname = usePathname();
-  const { toggle } = useMobileMenu();
 
-  if (pathname === '/login') return null;
-
-  const titles: { [key: string]: string } = {
-    '/dashboard': 'Dashboard',
-    '/members': 'Member Directory',
-    '/members/add': 'Add New Member',
-    '/payments': 'Financial History',
-    '/expired': 'Expiry Tracking',
-    '/settings': 'System Settings',
-  };
-
-  const title = Object.keys(titles).find(key => pathname.startsWith(key)) ? titles[Object.keys(titles).find(key => pathname.startsWith(key))!] : 'Dashboard';
-
+  // On mobile, this is the "GymConnect" top header
+  // On desktop, it stays as the top search/profile bar
+  
   return (
-    <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={toggle}
-          className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl lg:hidden transition-colors"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
-        <h2 className="text-xl md:text-2xl font-bold text-gray-900 truncate">
-          {title}
-        </h2>
+    <header className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-2xl border-b border-white/20 shadow-sm flex justify-between items-center px-5 h-16 transition-all">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold">
+          {settings.gymName?.[0] || 'G'}
+        </div>
+        <h1 className="text-lg font-extrabold text-blue-600 tracking-tight">
+          {settings.gymName || 'GymConnect'}
+        </h1>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4">
-        <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors hidden sm:block">
-          <Bell className="w-6 h-6" />
+      <div className="flex items-center gap-2">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100/50 active:scale-95 transition-all">
+          <Bell className="w-5 h-5" />
         </button>
-        <div className="h-10 w-[1px] bg-gray-100 mx-2 hidden md:block" />
-        <div className="flex items-center gap-3 pl-2">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-            <User className="w-6 h-6" />
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-bold text-gray-900">Admin</p>
-            <p className="text-xs text-gray-500">{gymName} Manager</p>
+        <div className="hidden md:block w-8 h-8 rounded-full bg-slate-200 overflow-hidden ml-2">
+          <div className="w-full h-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+            AD
           </div>
         </div>
       </div>

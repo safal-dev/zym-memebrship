@@ -1,95 +1,91 @@
-'use client';
-
-import { usePathname } from 'next/navigation';
+'use client'
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
-  DollarSign, 
-  CalendarClock, 
-  Settings, 
-  LogOut,
-  X
+  CreditCard, 
+  Settings as SettingsIcon,
+  LogOut
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useMobileMenu } from '@/context/MobileMenuContext';
+import { cn } from '@/lib/utils';
 
-export function Sidebar({ gymName }: { gymName: string }) {
+export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { isOpen, close } = useMobileMenu();
 
-  if (pathname === '/login') return null;
-
-  const menuItems = [
+  const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Members', icon: Users, href: '/members' },
-    { name: 'Payments', icon: DollarSign, href: '/payments' },
-    { name: 'Expiring', icon: CalendarClock, href: '/expired' },
-    { name: 'Settings', icon: Settings, href: '/settings' },
+    { name: 'Payments', icon: CreditCard, href: '/payments' },
+    { name: 'Settings', icon: SettingsIcon, href: '/settings' },
   ];
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-    router.refresh();
-    close();
-  };
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
-          onClick={close}
-        />
-      )}
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed left-0 top-0 z-40 border-r border-slate-800">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold">G</div>
+            <span className="text-xl font-bold tracking-tight">GymConnect</span>
+          </div>
 
-      {/* Sidebar Content */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-gray-900 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0",
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="flex items-center justify-between h-20 border-b border-gray-800 px-6">
-          <h1 className="text-xl font-bold text-white tracking-wider flex items-center gap-2 truncate">
-            <span className="text-blue-500 uppercase">{gymName.split(' ')[0]}</span> {gymName.split(' ').slice(1).join(' ')}
-          </h1>
-          <button onClick={close} className="lg:hidden p-2 text-gray-400 hover:text-white">
-            <X className="w-6 h-6" />
-          </button>
+          <nav className="space-y-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                    isActive 
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                      : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-slate-400 group-hover:text-white")} />
+                  <span className="font-semibold">{item.name}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-        
-        <nav className="flex-1 px-4 py-6 space-y-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={close}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium",
-                pathname === item.href 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.name}
-            </Link>
-          ))}
-        </nav>
 
-        <div className="p-4 border-t border-gray-800">
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-medium"
+        <div className="mt-auto p-6 border-t border-slate-800">
+          <Link
+            href="/api/auth/logout"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200"
           >
             <LogOut className="w-5 h-5" />
-            Logout
-          </button>
+            <span className="font-semibold">Sign Out</span>
+          </Link>
         </div>
-      </div>
+      </aside>
+
+      {/* Mobile Bottom Navigation (GymConnect Style) */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full rounded-t-[32px] z-50 bg-white/80 backdrop-blur-32 border-t border-white/30 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <div className="flex justify-around items-center px-4 pt-3 pb-8">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center transition-all active:scale-90 duration-150 py-1 px-3 rounded-2xl",
+                  isActive 
+                    ? "text-blue-600 bg-blue-50/50" 
+                    : "text-slate-400"
+                )}
+              >
+                <item.icon className={cn("w-6 h-6 mb-1", isActive && "fill-current")} />
+                <span className="text-[11px] font-semibold uppercase tracking-wider">{item.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }

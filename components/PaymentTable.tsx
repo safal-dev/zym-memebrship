@@ -65,29 +65,27 @@ export function PaymentTable({ payments, settings }: { payments: Payment[], sett
         </div>
 
         {/* Mobile List View */}
-        <div className="lg:hidden space-y-3 px-2">
+        <div className="lg:hidden divide-y divide-gray-100">
           {filteredPayments.map((p) => (
-            <div key={p.id} className="p-5 bg-white rounded-[2rem] border border-gray-100 shadow-sm flex justify-between items-center active:scale-[0.98] transition-all">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                  <DollarSign className="w-6 h-6 stroke-[2.5]" />
+            <div key={p.id} className="p-4 flex justify-between items-start">
+              <div className="flex gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                  <DollarSign className="w-5 h-5" />
                 </div>
                 <div>
-                  <Link href={`/members/${p.memberId}`} className="font-black text-gray-900 block tracking-tight">
+                  <Link href={`/members/${p.memberId}`} className="font-bold text-gray-900 block leading-tight mb-1">
                     {p.memberName}
                   </Link>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{format(new Date(p.paymentDate), 'MMM dd')}</span>
-                    <span className="w-1 h-1 bg-gray-200 rounded-full" />
-                    <span className="text-[10px] text-blue-600 font-black uppercase tracking-widest">{p.method}</span>
+                  <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium uppercase">
+                    <span>{p.id}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {format(new Date(p.paymentDate), 'MMM dd')}</span>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-lg font-black text-emerald-600 tracking-tight">
-                  +{formatCurrency(p.amount, settings.currency)}
-                </p>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.1em] mt-0.5">Success</p>
+                <p className="font-black text-emerald-600">+{formatCurrency(p.amount, settings.currency)}</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{p.method}</p>
               </div>
             </div>
           ))}
